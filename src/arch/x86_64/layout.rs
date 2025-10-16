@@ -5,7 +5,7 @@ use core::{cell::UnsafeCell, ops::Range};
 
 use crate::layout::{MemoryAttribute, MemoryDescriptor, MemoryLayout};
 
-extern "Rust" {
+unsafe extern "Rust" {
     static ram_min: UnsafeCell<()>;
     static code_start: UnsafeCell<()>;
     static code_end: UnsafeCell<()>;

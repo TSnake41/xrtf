@@ -9,6 +9,14 @@ use crate::{
     layout::MemoryDescriptor,
 };
 
+pub const XEN_HVM_MEMMAP_TYPE_RAM: u32 = 1;
+pub const XEN_HVM_MEMMAP_TYPE_RESERVED: u32 = 2;
+pub const XEN_HVM_MEMMAP_TYPE_ACPI: u32 = 3;
+pub const XEN_HVM_MEMMAP_TYPE_NVS: u32 = 4;
+pub const XEN_HVM_MEMMAP_TYPE_UNUSABLE: u32 = 5;
+pub const XEN_HVM_MEMMAP_TYPE_DISABLED: u32 = 6;
+pub const XEN_HVM_MEMMAP_TYPE_PMEM: u32 = 7;
+
 // Structures from xen/include/public/arch-x86/hvm/start_info.h
 #[derive(Debug)]
 #[repr(C)]
@@ -39,7 +47,16 @@ impl From<MemMapEntry> for MemoryEntry {
         Self {
             addr: value.addr,
             size: value.size,
-            entry_type: EntryType::from(value.entry_type),
+            entry_type: match value.entry_type {
+                XEN_HVM_MEMMAP_TYPE_RAM => EntryType::Ram,
+                XEN_HVM_MEMMAP_TYPE_RESERVED => EntryType::Reserved,
+                XEN_HVM_MEMMAP_TYPE_ACPI => EntryType::AcpiReclaimable,
+                XEN_HVM_MEMMAP_TYPE_NVS => EntryType::AcpiNvs,
+                XEN_HVM_MEMMAP_TYPE_UNUSABLE => EntryType::Bad,
+                XEN_HVM_MEMMAP_TYPE_DISABLED => EntryType::Bad,
+                XEN_HVM_MEMMAP_TYPE_PMEM => EntryType::Persistent,
+                _ => EntryType::Reserved, // Unknown
+            },
         }
     }
 }
@@ -76,7 +93,7 @@ impl Info for StartInfo {
 }
 
 // The PVH Boot Protocol starts at the 32-bit entrypoint to our firmware.
-extern "C" {
+unsafe extern "C" {
     fn ram32_start();
 }
 
@@ -98,8 +115,7 @@ struct Note {
 }
 
 // This is: ELFNOTE(Xen, XEN_ELFNOTE_PHYS32_ENTRY, .quad ram32_start)
-#[cfg(not(test))]
-#[link_section = ".note"]
+#[unsafe(link_section = ".note")]
 #[used]
 static PVH_NOTE: Note = Note {
     name_size: size_of::<Name>() as u32,

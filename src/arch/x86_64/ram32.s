@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2020 Google LLC
+# Copyright 2025 Teddy Astie - Vates SAS
 
 .section .text32, "ax"
 .global ram32_start
@@ -11,15 +12,69 @@ ram32_start:
 
 setup_page_tables:
     # First L2 entry identity maps [0, 2 MiB)
-    movl $0b10000011, (L2_TABLES) # huge (bit 7), writable (bit 1), present (bit 0)
+    movl $0b10000011, (L2_TABLE) # huge (bit 7), writable (bit 1), present (bit 0)
     # First L3 entry points to L2 table
-    movl $L2_TABLES, %eax
+    movl $L2_TABLE, %eax
     orb  $0b00000011, %al # writable (bit 1), present (bit 0)
     movl %eax, (L3_TABLE)
     # First L4 entry points to L3 table
     movl $L3_TABLE, %eax
     orb  $0b00000011, %al # writable (bit 1), present (bit 0)
     movl %eax, (L4_TABLE)
+
+sev_check:
+    # Check GHCB/SEV-ES through start_info.flags & SIF_HVM_GHCB.
+    mov 8(%edi), %edx
+    btl $5, %edx
+    jnc no_ghcb
+
+use_ghcb:
+    # Use GHCB protocol instead.
+    movl $0xc0010130, %ecx # MSR_AMD64_SEV_GHCB
+    rdmsr
+    # C-bit is in EAX[31:24]
+    shr $24, %eax
+    mov %eax, %ebx
+    jmp sev_bit_known
+
+no_ghcb:
+    # Check CPUID highest leaf
+    movl $0x80000000, %eax
+    cpuid
+    cmpl $0x8000001f, %eax
+    jb enable_paging
+
+    # Check for SEV support
+    movl $0x8000001f, %eax
+    cpuid
+    btl $1, %eax
+    jnc enable_paging
+
+sev_bit_known:
+    # Check if SEV is enabled
+    movl $0xc0010131, %ecx # MSR_AMD64_SEV
+    rdmsr
+    movl %eax, (SEV_STATUS)
+    btl $0, %eax # MSR_AMD64_SEV_ENABLED_BIT
+    jnc enable_paging
+
+    movl %ebx, %ecx
+    andl $0x3f, %ecx # Get C-bit position
+    subl $0x20, %ecx
+    movl $1, %ebx
+    shll %cl, %ebx
+
+    # %ebx contains high part of C-bit mask
+    # We assume that C-bit is over the 32-bits mark.
+    movl %ebx, (MEMORY_ENCRYPT_FLAG + 4)
+
+    # Inject C-bit to pagetables
+    leal (L2_TABLE), %eax
+    orl %ebx, 4(%eax)
+    leal (L3_TABLE), %eax
+    orl %ebx, 4(%eax)
+    leal (L4_TABLE), %eax
+    orl %ebx, 4(%eax)
 
 enable_paging:
     # Load page table root into CR3

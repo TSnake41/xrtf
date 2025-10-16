@@ -6,7 +6,7 @@ use core::arch::asm;
 #[cfg(target_arch = "riscv64")]
 use core::arch::riscv64::pause;
 #[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::_rdtsc;
+pub use core::arch::x86_64::_rdtsc as rdtsc;
 
 #[cfg(target_arch = "aarch64")]
 #[inline]
@@ -23,22 +23,16 @@ unsafe fn rdtsc() -> u64 {
     r
 }
 
-#[cfg(target_arch = "x86_64")]
-#[inline]
-unsafe fn rdtsc() -> u64 {
-    _rdtsc()
-}
-
 #[cfg(target_arch = "aarch64")]
 #[inline]
-unsafe fn pause() {
-    asm!("yield");
+fn pause() {
+    unsafe { asm!("yield") }
 }
 
 #[cfg(target_arch = "x86_64")]
 #[inline]
-unsafe fn pause() {
-    asm!("pause");
+fn pause() {
+    unsafe { asm!("pause") }
 }
 
 pub fn ndelay(ns: u64) {
@@ -100,4 +94,15 @@ where
         us -= 1;
     }
     cond()
+}
+
+pub fn stop_cpu() -> ! {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        core::arch::asm!("cli; hlt");
+    }
+
+    loop {
+        pause()
+    }
 }

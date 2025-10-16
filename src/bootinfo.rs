@@ -37,7 +37,7 @@ pub struct MemoryEntry {
     pub entry_type: EntryType,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntryType {
     Ram,
     Reserved,
@@ -45,5 +45,5 @@ pub enum EntryType {
     AcpiNvs,
     Bad,
     VendorReserved,
-    CorebootTable,
+    Persistent,
 }

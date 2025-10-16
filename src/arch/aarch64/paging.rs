@@ -11,9 +11,9 @@ use aarch64_cpu::{
 
 use self::interface::Mmu;
 
+use super::layout::code_range;
 use super::layout::map::dram::{ACPI_SIZE, FDT_SIZE, FDT_START};
 use super::{layout::KernelAddrSpace, translation::TranslationTable};
-use crate::arch::aarch64::layout::code_range;
 
 /// MMU enable errors variants.
 #[derive(Debug)]

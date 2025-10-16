@@ -4,7 +4,7 @@
 use core::ops::Range;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum MemoryAttribute {
     Code,
     Data,
@@ -25,13 +25,13 @@ impl MemoryDescriptor {
 
     pub fn range_start(&self) -> usize {
         let addr = (self.range)().start;
-        assert!(addr % Self::PAGE_SIZE == 0);
+        assert!(addr.is_multiple_of(Self::PAGE_SIZE));
         addr
     }
 
     pub fn range_end(&self) -> usize {
         let addr = (self.range)().end;
-        assert!(addr % Self::PAGE_SIZE == 0);
+        assert!(addr.is_multiple_of(Self::PAGE_SIZE));
         addr
     }
 

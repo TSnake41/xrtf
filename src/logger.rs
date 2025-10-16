@@ -10,7 +10,7 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            log!("[{}] {}", record.level(), record.args());
+            println!("[{}] {}", record.level(), record.args());
         }
     }
 
